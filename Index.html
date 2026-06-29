@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Mastermind - Infinite Scandinavian Edition V2</title>
+    <!-- Tailwind CSS v4 Browser Compiler -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Fredoka', sans-serif; }
+        .smooth-fade { transition: all 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-amber-50 min-h-screen text-slate-700 flex flex-col items-center justify-center p-4">
+
+    <!-- Language Selector Toggle -->
+    <div class="absolute top-4 right-4 bg-white px-4 py-2 rounded-full shadow-md border border-amber-200 z-50">
+        <label for="lang-select" class="text-sm font-bold text-amber-600 mr-1">🌐</label>
+        <select id="lang-select" onchange="changeLanguage()" class="bg-transparent font-bold text-sm text-slate-600 focus:outline-none cursor-pointer">
+            <option value="id">Indonesia</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-xl p-6 w-full max-w-2xl border-4 border-amber-200 text-center relative overflow-hidden">
+
+        <!-- CELEBRATION OVERLAY -->
+        <div id="trophy-overlay" class="hidden absolute inset-0 bg-white/95 flex flex-col items-center justify-center z-40 smooth-fade">
+            <div id="overlay-emoji" class="text-8xl animate-bounce mb-4">🥉</div>
+            <h2 id="overlay-title" class="text-3xl font-bold text-emerald-500 mb-2">Hebat! 10 Jawaban Benar!</h2>
+            <p id="overlay-desc" class="text-slate-500 mb-6">Kamu mendapatkan Piala Emas! Ayo lanjutkan petualanganmu!</p>
+            <button id="overlay-continue-btn" onclick="closeTrophyOverlay()" class="bg-amber-400 hover:bg-amber-500 text-white font-bold text-xl px-8 py-3 rounded-2xl shadow-md border-b-4 border-amber-600">Lanjut Main 🚀</button>
+        </div>
+
+        <!-- UPSELL OVERLAY (DECOY PRICING) - hanya tampil untuk user non-premium yang
+             mencapai Tier Diamond atau 100 data poin lokal. Admin (?role=...) bypass total. -->
+        <div id="upsell-overlay" class="hidden absolute inset-0 bg-slate-900/80 flex flex-col items-center justify-center z-50 p-4 smooth-fade">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl border-4 border-amber-300 max-h-[90vh] overflow-y-auto">
+                <div class="text-5xl mb-2">👑✨</div>
+                <h3 class="text-xl font-bold text-amber-500 mb-1">Hebat Sekali! Anak Anda Layak Naik Level!</h3>
+                <p class="text-xs text-slate-500 mb-4">Buka modul tambahan untuk terus mendukung perkembangan belajarnya.</p>
+
+                <div class="border-2 border-sky-200 bg-sky-50 rounded-2xl p-3 mb-3 text-left">
+                    <p class="font-bold text-sky-700 text-sm">📦 Paket 2 Premium</p>
+                    <p class="text-xs text-slate-500 mb-1">Modul Abjad (A-Z) Terbuka</p>
+                    <p class="text-sm"><span class="line-through text-slate-400">Rp199.000</span> ➡️ <span class="font-bold text-emerald-600">Rp149.000</span> <span class="text-[10px] text-amber-500 font-bold">Harga Perkenalan</span></p>
+                </div>
+
+                <div class="border-2 border-amber-300 bg-amber-50 rounded-2xl p-3 mb-4 text-left relative">
+                    <span class="absolute -top-2 right-3 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Best Value</span>
+                    <p class="font-bold text-amber-700 text-sm">👑 Paket 3 Master Ultimate</p>
+                    <p class="text-xs text-slate-500 mb-1">Semua Fitur + Custom Name Tracing + Bilingual Body Parts & Colors</p>
+                    <p class="text-sm"><span class="line-through text-slate-400">Rp249.000</span> ➡️ <span class="font-bold text-emerald-600">Rp199.000</span> <span class="text-[10px] text-amber-500 font-bold">Harga Perkenalan</span></p>
+                </div>
+
+                <button onclick="closeUpsellOverlay()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-sm py-3 rounded-2xl">Tutup & Kembali ke Menu</button>
+            </div>
+        </div>
+
+        <!-- HALAMAN WELCOME & GUIDANCE SELEKSI USIA -->
+        <div id="welcome-screen" class="space-y-6">
+            <h1 id="game-title" class="text-4xl font-bold text-amber-500 tracking-wide">🦊 Jago Matematika ✨</h1>
+            <span id="badge-verified" class="inline-block bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-300">✅ 3+ Tahun Terverifikasi</span>
+            <p id="welcome-desc" class="text-lg text-slate-500">Selamat Datang! Pilih tingkatan usiamu untuk memulai belajar:</p>
+
+            <!-- Mode ABK & ADHD Friendly - DITARUH DI ATAS seleksi usia, supaya urutan
+                 visual cocok dengan instruksi: aktifkan dulu sebelum memilih usia/level. -->
+            <div class="pt-2 flex flex-col items-center gap-2">
+                <p id="adhd-guide-text" class="text-xs font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-full">👉 Tips: Aktifkan dulu mode ini SEBELUM memilih usia di bawah, jika anak membutuhkan.</p>
+                <label class="flex items-center gap-2 bg-teal-50 border-2 border-teal-200 px-4 py-3 rounded-2xl cursor-pointer w-full max-w-md justify-center transition hover:bg-teal-100">
+                    <input type="checkbox" id="abk-toggle" onchange="toggleAbkMode()" class="w-5 h-5 accent-teal-500">
+                    <span id="abk-toggle-label" class="font-bold text-teal-700 text-sm">🧩 Mode Anak Berkebutuhan Khusus (ABK) & ADHD Friendly</span>
+                </label>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto pt-2">
+                <!-- Usia 3-4 Tahun -->
+                <button onclick="selectAgeGroup('3-4')" class="bg-sky-100 hover:bg-sky-200 border-2 border-sky-300 p-4 rounded-2xl text-left transition transform hover:scale-102">
+                    <span class="text-2xl block">🧸</span>
+                    <span id="age-34-title" class="font-bold text-sky-700 text-lg block">Usia 3-4 Tahun (Easy)</span>
+                    <span id="age-34-desc" class="text-xs text-sky-600">Poster Belajar Menarik & Penjumlahan dasar (1+1 sampai 4+4)</span>
+                </button>
+                <!-- Usia 5-6 Tahun -->
+                <button onclick="selectAgeGroup('5-6')" class="bg-emerald-100 hover:bg-emerald-200 border-2 border-emerald-300 p-4 rounded-2xl text-left transition transform hover:scale-102">
+                    <span class="text-2xl block">🚀</span>
+                    <span id="age-56-title" class="font-bold text-emerald-700 text-lg block">Usia 5-6 Tahun (Medium)</span>
+                    <span id="age-56-desc" class="text-xs text-emerald-600">Tantangan penjumlahan dinamis hingga maksimal 5 + 9</span>
+                </button>
+                <!-- Usia 7+ Tahun -->
+                <button onclick="selectAgeGroup('7+')" class="bg-violet-100 hover:bg-violet-200 border-2 border-violet-300 p-4 rounded-2xl text-left transition transform hover:scale-102">
+                    <span class="text-2xl block">🧠</span>
+                    <span id="age-7p-title" class="font-bold text-violet-700 text-lg block">Usia 7+ Tahun (Hard)</span>
+                    <span id="age-7p-desc" class="text-xs text-violet-600">Tantangan Mastermind Perkalian Dasar (1×1 sampai 9×9)</span>
+                </button>
+            </div>
+
+            <div class="pt-2 flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+                <button id="btn-tutorial-mode" onclick="startTutorial()" class="flex-1 bg-purple-400 hover:bg-purple-500 text-white font-bold text-base py-4 rounded-2xl shadow-md border-b-4 border-purple-600">📖 Tutorial Poster</button>
+                <button id="btn-alphabet-mode" onclick="openAlphabetModule()" class="flex-1 bg-pink-400 hover:bg-pink-500 text-white font-bold text-base py-4 rounded-2xl shadow-md border-b-4 border-pink-600 relative">
+                    🔤 <span id="btn-alphabet-label">Modul Tutorial Abjad (A-Z)</span>
+                    <span id="alphabet-lock-badge" class="hidden absolute -top-2 -right-2 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-white">🔒 Premium</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- HALAMAN RUANG TUTORIAL POSTER -->
+        <div id="tutorial-screen" class="hidden space-y-6">
+            <div class="flex justify-between items-center bg-purple-50 p-4 rounded-2xl border border-purple-100">
+                <h2 id="tutorial-title" class="text-2xl font-bold text-purple-600">💡 Ruang Tutorial Visual</h2>
+                <button id="btn-tutorial-back" onclick="stopPosterTutorial(); showScreen('welcome-screen');" class="bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-500 font-bold px-4 py-2 rounded-xl text-sm shadow-sm transition flex items-center gap-1">⬅️ <span id="text-back">Kembali</span></button>
+            </div>
+
+            <!-- Pilihan Penjumlahan (Usia 3-4 & 5-6) -->
+            <p id="poster-section-add" class="text-xs font-bold text-slate-400 uppercase tracking-wide">➕ Penjumlahan</p>
+            <div class="grid grid-cols-2 sm:flex sm:flex-row gap-2 justify-center px-2">
+                <button id="btn-start-t1" onclick="startPosterAnimation(1, '+')" class="bg-purple-100 hover:bg-purple-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-purple-300 transition w-full sm:w-auto">1 + 1 = ?</button>
+                <button id="btn-start-t2" onclick="startPosterAnimation(2, '+')" class="bg-purple-100 hover:bg-purple-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-purple-300 transition w-full sm:w-auto">2 + 2 = ?</button>
+                <button id="btn-start-t3" onclick="startPosterAnimation(3, '+')" class="bg-purple-100 hover:bg-purple-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-purple-300 transition w-full sm:w-auto">3 + 3 = ?</button>
+                <button id="btn-start-t4" onclick="startPosterAnimation(4, '+')" class="bg-purple-100 hover:bg-purple-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-purple-300 transition w-full sm:w-auto">4 + 4 = ?</button>
+            </div>
+
+            <!-- Pilihan Perkalian (Usia 7+) -->
+            <p id="poster-section-mult" class="text-xs font-bold text-slate-400 uppercase tracking-wide pt-2">✖️ Perkalian (Usia 7+)</p>
+            <div class="grid grid-cols-2 sm:flex sm:flex-row gap-2 justify-center px-2">
+                <button id="btn-start-m1" onclick="startPosterAnimation(1, '×')" class="bg-violet-100 hover:bg-violet-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-violet-300 transition w-full sm:w-auto">1 × 1 = ?</button>
+                <button id="btn-start-m2" onclick="startPosterAnimation(2, '×')" class="bg-violet-100 hover:bg-violet-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-violet-300 transition w-full sm:w-auto">2 × 2 = ?</button>
+                <button id="btn-start-m3" onclick="startPosterAnimation(3, '×')" class="bg-violet-100 hover:bg-violet-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-violet-300 transition w-full sm:w-auto">3 × 3 = ?</button>
+                <button id="btn-start-m4" onclick="startPosterAnimation(4, '×')" class="bg-violet-100 hover:bg-violet-200 px-4 py-3 rounded-xl font-bold text-lg border-2 border-violet-300 transition w-full sm:w-auto">4 × 4 = ?</button>
+            </div>
+
+            <!-- Kontainer Lembar Poster Otomatis Muncul Berjeda -->
+            <div id="tutorial-visual-box" class="hidden bg-slate-50 p-6 rounded-2xl border-4 border-dashed border-slate-200 max-w-sm mx-auto smooth-fade">
+                <h4 id="poster-header" class="text-xl font-bold text-slate-500 mb-4 border-b pb-2">📋 Poster Penjumlahan</h4>
+                <div id="poster-lines" class="flex flex-col gap-2 font-bold text-2xl text-slate-700 items-center justify-center min-h-[250px]">
+                    <!-- Baris angka diisi otomatis oleh Javascript dengan jeda 1 detik -->
+                </div>
+            </div>
+            <button id="btn-tutorial-ready" onclick="stopPosterTutorial(); showScreen('welcome-screen');" class="w-full bg-emerald-400 hover:bg-emerald-500 text-white font-bold text-xl py-4 rounded-2xl shadow-md border-b-4 border-emerald-600">Aku Sudah Paham! Pilih Game 🚀</button>
+        </div>
+
+        <!-- HALAMAN MODUL TUTORIAL ABJAD (A-Z) - jembatan dari matematika ke menulis kata -->
+        <div id="alphabet-screen" class="hidden space-y-6">
+            <div class="flex justify-between items-center bg-pink-50 p-4 rounded-2xl border border-pink-100">
+                <h2 id="alphabet-title" class="text-2xl font-bold text-pink-600">🔤 Modul Tutorial Abjad (A-Z)</h2>
+                <button onclick="showScreen('welcome-screen')" class="bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-500 font-bold px-4 py-2 rounded-xl text-sm shadow-sm transition flex items-center gap-1">⬅️ <span id="text-back-2">Kembali</span></button>
+            </div>
+            <div id="alphabet-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-[60vh] overflow-y-auto p-1"></div>
+        </div>
+
+        <!-- HALAMAN GAME INTERAKTIF (UNLIMITED RUNNING MODE) -->
+        <div id="game-screen" class="hidden space-y-6">
+            <div class="flex justify-between items-center text-sm font-bold text-slate-400">
+                <span><span id="label-mode">Mode</span>: <span id="display-mode" class="text-sky-500">Easy</span></span>
+                <span><span id="label-streak">Benar Beruntun</span>: <span id="current-streak" class="text-emerald-500">0</span> 🔥</span>
+            </div>
+            <!-- Timer berjalan diam-diam untuk data saja; wrapper ini disembunyikan total
+                 saat Mode ABK/ADHD aktif agar anak tidak merasa dikejar waktu. -->
+            <div id="timer-bar-wrapper" class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div id="timer-bar" class="h-2 bg-sky-400" style="width:100%; transition: width 1s linear;"></div>
+            </div>
+            <div class="bg-rose-50 p-8 rounded-3xl border-4 border-rose-100">
+                <h3 id="math-question" class="text-5xl font-bold text-rose-500 tracking-wide">0 + 0 = ?</h3>
+            </div>
+            <div class="flex gap-2 max-w-xs mx-auto">
+                <input type="number" id="user-answer" placeholder="?" class="w-full px-4 py-3 text-2xl text-center font-bold border-4 border-slate-200 rounded-2xl focus:outline-none focus:border-amber-400" onkeyup="if(event.key === 'Enter') checkAnswer()">
+                <button id="btn-submit" onclick="checkAnswer()" class="bg-amber-400 hover:bg-amber-500 text-white font-bold px-6 py-3 rounded-2xl text-lg border-b-4 border-amber-600">Kirim</button>
+            </div>
+            <div id="feedback-box" class="text-2xl font-bold hidden smooth-fade"></div>
+
+            <div class="pt-2">
+                <button id="btn-quit" onclick="quitGame()" class="text-sm text-slate-400 hover:text-slate-600 font-bold underline">Selesai & Simpan Skor Keluar 🏁</button>
+            </div>
+        </div>
+
+        <!-- HALAMAN SESI BERAKHIR -->
+        <div id="result-screen" class="hidden space-y-6">
+            <h2 id="result-title" class="text-3xl font-bold text-emerald-500">🎉 Sesi Belajar Selesai 🎉</h2>
+            <div id="final-trophy-display"></div>
+            <p id="result-score-desc" class="text-xl">Total Jawaban Benar Kamu: <span id="final-score" class="text-4xl font-bold text-amber-500">0</span></p>
+            <p id="result-sheet-desc" class="text-slate-400 text-sm">Laporan hasil belajar otomatis dikirim ke sistem orang tua!</p>
+            <div class="flex gap-2 max-w-xs mx-auto">
+                <input type="email" id="parent-email-input" placeholder="email.ortu@contoh.com" class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-xl focus:outline-none focus:border-emerald-400">
+                <button id="btn-send-report" onclick="sendParentReport()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-sm whitespace-nowrap">📧 Kirim</button>
+            </div>
+            <p id="report-status-msg" class="text-xs text-slate-400"></p>
+            <button id="btn-whatsapp-report" onclick="sendWhatsAppReport()" class="w-full max-w-xs mx-auto bg-[#25D366] hover:bg-[#1ebe5a] text-white font-bold text-base py-3 rounded-2xl shadow-md border-b-4 border-[#128C7E] flex items-center justify-center gap-2">📱 Kirim Laporan via WhatsApp</button>
+            <button id="btn-replay" onclick="showScreen('welcome-screen')" class="bg-slate-400 hover:bg-slate-500 text-white font-bold text-lg px-6 py-3 rounded-2xl transition">Main Lagi 🔄</button>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL (TERSEMBUNYI - hanya muncul jika token admin valid lewat ?role=...) -->
+    <!-- Tidak terkait dengan UI anak di atas; jangan diubah saat menyentuh layar game. -->
+    <div id="admin-panel" class="hidden fixed bottom-4 left-4 z-50 font-sans text-left">
+        <button id="admin-toggle-btn" onclick="toggleAdminPanel()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-2 rounded-full shadow-lg flex items-center gap-1">
+            🔐 Admin
+        </button>
+
+        <div id="admin-panel-box" class="hidden mt-2 bg-white border-2 border-slate-300 rounded-2xl shadow-2xl p-4 w-80 max-h-[70vh] overflow-y-auto">
+            <h3 class="font-bold text-slate-700 mb-3 text-sm">⚙️ Admin Panel (Testing)</h3>
+
+            <!-- Plan switcher -->
+            <div class="mb-4">
+                <p class="text-xs font-bold text-slate-400 mb-1">App Plan saat ini: <span id="admin-current-plan" class="text-slate-700">-</span></p>
+                <div class="flex gap-1">
+                    <button onclick="changePlan('free')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-xs font-bold py-2 rounded-lg">Free</button>
+                    <button onclick="changePlan('basic')" class="flex-1 bg-sky-100 hover:bg-sky-200 text-xs font-bold py-2 rounded-lg">Basic</button>
+                    <button onclick="changePlan('premium')" class="flex-1 bg-amber-100 hover:bg-amber-200 text-xs font-bold py-2 rounded-lg">Premium</button>
+                    <button onclick="changePlan('master')" class="flex-1 bg-violet-100 hover:bg-violet-200 text-xs font-bold py-2 rounded-lg">Master</button>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">window.IS_ADMIN selalu membuka semua fitur premium untuk testing, terlepas dari plan di atas.</p>
+            </div>
+
+            <!-- Score history -->
+            <div>
+                <button onclick="loadScoreHistory()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg mb-2">📊 Muat Riwayat Sesi</button>
+                <div id="admin-history-list" class="text-xs text-slate-600 space-y-1"></div>
+            </div>
+
+            <p id="admin-status-msg" class="text-xs text-rose-500 mt-2"></p>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let streak = 0;
+        let num1, num2, correctAnswer;
+        let currentLang = 'id';
+        let ageGroup = '3-4';
+        let posterInterval = null;
+        let operatorSymbol = '+';
+
+        // Mode ABK & ADHD Friendly: saat aktif, timer per soal diperpanjang 3x
+        // dan feedback dibuat lebih tenang & menenangkan (warna lebih lembut,
+        // tanpa nada terburu-buru), bukan untuk mengukur kecepatan anak.
+        let adhdMode = false;
+        const STANDARD_TIME_LIMIT = 15; // detik
+        let timerInterval = null;
+        let timeLeft = STANDARD_TIME_LIMIT;
+
+        const dictionary = {
+            id: {
+                mainTitle: "🦊 Jago Matematika ✨",
+                welcomeDesc: "Selamat Datang! Pilih tingkatan usiamu untuk memulai belajar:",
+                age34Title: "Usia 3-4 Tahun (Easy)",
+                age34Desc: "Poster Belajar Menarik & Penjumlahan dasar (1+1 sampai 4+4)",
+                age56Title: "Usia 5-6 Tahun (Medium)",
+                age56Desc: "Tantangan penjumlahan dinamis hingga maksimal 5 + 9",
+                btnTutorialMode: "📖 Tutorial Poster",
+                tutorialTitle: "💡 Ruang Tutorial Poster",
+                textBack: "Kembali",
+                btnTutorialReady: "Aku Sudah Paham! Pilih Game 🚀",
+                labelMode: "Tingkat",
+                labelStreak: "Benar Beruntun",
+                btnSubmit: "Kirim",
+                btnQuit: "Selesai & Simpan Skor Keluar 🏁",
+                resultTitle: "🎉 Sesi Belajar Selesai 🎉",
+                resultScoreDesc: "Total Jawaban Benar Kamu: ",
+                resultSheetDesc: "Laporan hasil belajar otomatis dikirim ke sistem orang tua!",
+                btnReplay: "Main Lagi 🔄",
+                overlayTitle: "Hebat! 10 Jawaban Benar!",
+                overlayDesc: "Kamu mendapatkan Piala Emas! Ayo lanjutkan petualanganmu!",
+                correctFeedback: "✨ HEBAT! Jawabanmu Benar! 🎉",
+                wrongFeedback: (ans) => `🦊 Ayo semangat, jawabannya adalah ${ans}`,
+                posterTitle: (n, op) => (op === '×') ? `📊 Poster Perkalian Kelompok ${n}` : `📊 Poster Penjumlahan Kelompok ${n}`,
+                badgeVerified: "✅ 3+ Tahun Terverifikasi",
+                age7pTitle: "Usia 7+ Tahun (Hard)",
+                age7pDesc: "Tantangan Mastermind Perkalian Dasar (1×1 sampai 9×9)",
+                abkToggleLabel: "🧩 Mode Anak Berkebutuhan Khusus (ABK) & ADHD Friendly",
+                calmCorrectFeedback: "🌟 Kerja bagus! Jawabanmu tepat sekali.",
+                calmWrongFeedback: (ans) => `🌿 Tidak apa-apa, pelan-pelan saja. Jawabannya ${ans}.`,
+                calmTimeoutFeedback: "🌿 Santai saja, ambil waktu sebanyak yang kamu butuhkan. Ini soal berikutnya.",
+                btnAlphabetLabel: "Modul Tutorial Abjad (A-Z)",
+                alphabetTitle: "🔤 Modul Tutorial Abjad (A-Z)",
+                lockedBadge: "🔒 Premium",
+                reportSending: "Mengirim laporan...",
+                reportSuccess: "✅ Laporan berhasil dikirim ke email orang tua.",
+                reportFailNoEmail: "⚠️ Mohon isi email orang tua terlebih dahulu.",
+                reportFailLocked: "⚠️ Laporan email hanya tersedia untuk paket Basic/Premium/Master.",
+                adhdGuideText: "👉 Tips: Aktifkan dulu mode ini SEBELUM memilih usia di bawah, jika anak membutuhkan.",
+                btnWhatsapp: "📱 Kirim Laporan via WhatsApp",
+                waReportIntro: "🎉 Laporan Belajar Anak - Jago Matematika ✨",
+                waLevelLabel: "📊 Level",
+                waScoreLabel: "✅ Skor",
+                waStreakLabel: "🔥 Streak Tertinggi",
+                waTierLabel: "Tier Piala",
+                waOutro: "Hebat sekali progres belajarnya hari ini! 🚀"
+            },
+            en: {
+                mainTitle: "🦊 Math Mastermind ✨",
+                welcomeDesc: "Welcome! Select your age group to start learning:",
+                age34Title: "Age 3-4 Years Old (Easy)",
+                age34Desc: "Fun Learning Poster & basic addition (1+1 up to 4+4)",
+                age56Title: "Age 5-6 Years Old (Medium)",
+                age56Desc: "Dynamic addition challenges up to maximum 5 + 9",
+                btnTutorialMode: "📖 Poster Tutorial",
+                tutorialTitle: "💡 Poster Tutorial Room",
+                textBack: "Back",
+                btnTutorialReady: "I Understand! Go to Game 🚀",
+                labelMode: "Level",
+                labelStreak: "Correct Streak",
+                btnSubmit: "Submit",
+                btnQuit: "Finish & Save Progress 🏁",
+                resultTitle: "🎉 Learning Session Completed 🎉",
+                resultScoreDesc: "Your Total Correct Answers: ",
+                resultSheetDesc: "Progress report has been automatically sent to parent's system!",
+                btnReplay: "Play Again 🔄",
+                overlayTitle: "Amazing! 10 Correct Answers!",
+                overlayDesc: "You won a Gold Trophy! Keep up the great work!",
+                correctFeedback: "✨ EXCELLENT! Your Answer is Correct! 🎉",
+                wrongFeedback: (ans) => `🦊 Keep it up! The correct answer is ${ans}`,
+                posterTitle: (n, op) => (op === '×') ? `📊 Multiplication Poster Group ${n}` : `📊 Addition Poster Group ${n}`,
+                badgeVerified: "✅ 3+ Years Verified",
+                age7pTitle: "Age 7+ Years Old (Hard)",
+                age7pDesc: "Multiplication Mastermind Challenge (1×1 up to 9×9)",
+                abkToggleLabel: "🧩 Special Needs & ADHD Friendly Mode",
+                calmCorrectFeedback: "🌟 Nice work! That's exactly right.",
+                calmWrongFeedback: (ans) => `🌿 No worries, take your time. The answer is ${ans}.`,
+                calmTimeoutFeedback: "🌿 No rush at all, take the time you need. Here's the next one.",
+                btnAlphabetLabel: "Alphabet Tutorial Module (A-Z)",
+                alphabetTitle: "🔤 Alphabet Tutorial Module (A-Z)",
+                lockedBadge: "🔒 Premium",
+                reportSending: "Sending report...",
+                reportSuccess: "✅ Report successfully sent to parent's email.",
+                reportFailNoEmail: "⚠️ Please enter a parent email first.",
+                reportFailLocked: "⚠️ Email reports are only available on Basic/Premium/Master plans.",
+                adhdGuideText: "👉 Tip: Turn this mode ON FIRST before picking the age group below, if your child needs it.",
+                btnWhatsapp: "📱 Send Report via WhatsApp",
+                waReportIntro: "🎉 Child's Learning Report - Math Mastermind ✨",
+                waLevelLabel: "📊 Level",
+                waScoreLabel: "✅ Score",
+                waStreakLabel: "🔥 Best Streak",
+                waTierLabel: "Trophy Tier",
+                waOutro: "Amazing progress today! 🚀"
+            }
+        };
+
+        function changeLanguage() {
+            currentLang = document.getElementById('lang-select').value;
+            const langData = dictionary[currentLang];
+
+            document.getElementById('game-title').innerHTML = langData.mainTitle;
+            document.getElementById('welcome-desc').innerText = langData.welcomeDesc;
+            document.getElementById('age-34-title').innerText = langData.age34Title;
+            document.getElementById('age-34-desc').innerText = langData.age34Desc;
+            document.getElementById('age-56-title').innerText = langData.age56Title;
+            document.getElementById('age-56-desc').innerText = langData.age56Desc;
+            document.getElementById('age-7p-title').innerText = langData.age7pTitle;
+            document.getElementById('age-7p-desc').innerText = langData.age7pDesc;
+            document.getElementById('badge-verified').innerText = langData.badgeVerified;
+            document.getElementById('abk-toggle-label').innerText = langData.abkToggleLabel;
+            document.getElementById('adhd-guide-text').innerText = langData.adhdGuideText;
+            document.getElementById('btn-whatsapp-report').innerText = langData.btnWhatsapp;
+            document.getElementById('btn-tutorial-mode').innerHTML = langData.btnTutorialMode;
+            document.getElementById('btn-alphabet-label').innerText = langData.btnAlphabetLabel;
+            document.getElementById('alphabet-lock-badge').innerText = langData.lockedBadge;
+            document.getElementById('alphabet-title').innerText = langData.alphabetTitle;
+            document.getElementById('tutorial-title').innerText = langData.tutorialTitle;
+            document.getElementById('text-back').innerText = langData.textBack;
+            document.getElementById('text-back-2').innerText = langData.textBack;
+            document.getElementById('btn-tutorial-ready').innerText = langData.btnTutorialReady;
+            document.getElementById('label-mode').innerText = langData.labelMode;
+            document.getElementById('label-streak').innerText = langData.labelStreak;
+            document.getElementById('btn-submit').innerText = langData.btnSubmit;
+            document.getElementById('btn-quit').innerText = langData.btnQuit;
+            document.getElementById('result-title').innerText = langData.resultTitle;
+            document.getElementById('result-sheet-desc').innerText = langData.resultSheetDesc;
+            document.getElementById('btn-replay').innerText = langData.btnReplay;
+            document.getElementById('overlay-title').innerText = langData.overlayTitle;
+            document.getElementById('overlay-desc').innerText = langData.overlayDesc;
+
+            updateQuestionUI();
+        }
+
+        function showScreen(screenId) {
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('tutorial-screen').classList.add('hidden');
+            document.getElementById('alphabet-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function startTutorial() {
+            showScreen('tutorial-screen');
+            document.getElementById('tutorial-visual-box').classList.add('hidden');
+            stopPosterTutorial();
+        }
+
+        function startPosterAnimation(baseNum, op) {
+            op = op || '+';
+            stopPosterTutorial();
+
+            const box = document.getElementById('tutorial-visual-box');
+            const linesContainer = document.getElementById('poster-lines');
+            const header = document.getElementById('poster-header');
+
+            header.innerText = dictionary[currentLang].posterTitle(baseNum, op);
+            box.classList.remove('hidden');
+            linesContainer.innerHTML = '';
+
+            let currentStep = 1;
+
+            posterInterval = setInterval(() => {
+                if (currentStep <= 10) {
+                    const result = (op === '×') ? baseNum * currentStep : baseNum + currentStep;
+                    const lineHtml = `
+                        <div class="w-full bg-white py-1 px-4 border rounded-xl shadow-sm text-center animate-fade-in text-xl font-bold">
+                            ${baseNum} ${op} ${currentStep} = <span class="text-emerald-500">${result}</span>
+                        </div>`;
+                    linesContainer.innerHTML += lineHtml;
+                    currentStep++;
+                } else {
+                    clearInterval(posterInterval);
+                }
+            }, 1000);
+        }
+
+        function stopPosterTutorial() {
+            if (posterInterval) {
+                clearInterval(posterInterval);
+            }
+            document.getElementById('poster-lines').innerHTML = '';
+        }
+
+        function selectAgeGroup(group) {
+            ageGroup = group;
+            score = 0;
+            streak = 0;
+            questionHistory = [];
+            document.getElementById('current-streak').innerText = streak;
+            document.getElementById('display-mode').innerText = (group === '3-4') ? 'Easy' : (group === '5-6') ? 'Medium' : 'Hard';
+            showScreen('game-screen');
+            generateQuestion();
+        }
+
+        // ===== ANTI-BORING ALGORITHM (anti duplikat komutatif) =====
+        // Menyimpan kunci beberapa soal terakhir agar pasangan angka yang sama,
+        // termasuk versi dibalik (5x9 lalu 9x5), tidak langsung muncul lagi.
+        let questionHistory = [];
+        const QUESTION_HISTORY_SIZE = 6;
+
+        function questionKey(a, b, op) {
+            return op + ':' + Math.min(a, b) + '-' + Math.max(a, b);
+        }
+
+        function rollQuestionCandidate() {
+            let n1, n2, op, ans;
+            if (ageGroup === '3-4') {
+                op = '+';
+                n1 = Math.floor(Math.random() * 4) + 1;
+                n2 = Math.floor(Math.random() * 4) + 1;
+                ans = n1 + n2;
+            } else if (ageGroup === '5-6') {
+                op = '+';
+                n1 = Math.floor(Math.random() * 5) + 1;
+                n2 = Math.floor(Math.random() * 9) + 1;
+                ans = n1 + n2;
+            } else {
+                // Usia 7+ (Hard): Mastermind Perkalian Dasar 1x1 sampai 9x9
+                op = '×';
+                n1 = Math.floor(Math.random() * 9) + 1;
+                n2 = Math.floor(Math.random() * 9) + 1;
+                ans = n1 * n2;
+            }
+            return { n1: n1, n2: n2, op: op, ans: ans };
+        }
+
+        function generateQuestion() {
+            document.getElementById('user-answer').value = '';
+            document.getElementById('feedback-box').classList.add('hidden');
+
+            let candidate, key, attempts = 0;
+            do {
+                candidate = rollQuestionCandidate();
+                key = questionKey(candidate.n1, candidate.n2, candidate.op);
+                attempts++;
+            } while (questionHistory.includes(key) && attempts < 25);
+
+            num1 = candidate.n1;
+            num2 = candidate.n2;
+            operatorSymbol = candidate.op;
+            correctAnswer = candidate.ans;
+
+            questionHistory.push(key);
+            if (questionHistory.length > QUESTION_HISTORY_SIZE) {
+                questionHistory.shift();
+            }
+
+            updateQuestionUI();
+            startTimer();
+        }
+
+        function updateQuestionUI() {
+            if(num1 !== undefined && num2 !== undefined) {
+                document.getElementById('math-question').innerText = `${num1} ${operatorSymbol} ${num2} = ?`;
+            }
+        }
+
+        // ===== TIMER PER SOAL (lebih panjang 3x saat Mode ABK/ADHD aktif) =====
+        // ATURAN UX KRITIS: saat adhdMode aktif, timer TETAP berjalan di background
+        // untuk keperluan data saja — wrapper visualnya disembunyikan TOTAL (bukan
+        // sekadar diam) supaya anak ABK/ADHD tidak merasa dikejar atau dipicu cemas
+        // oleh hitungan mundur/animasi berkedip apa pun.
+        function startTimer() {
+            stopTimer();
+            const limit = adhdMode ? STANDARD_TIME_LIMIT * 3 : STANDARD_TIME_LIMIT;
+            timeLeft = limit;
+            const wrapper = document.getElementById('timer-bar-wrapper');
+            const bar = document.getElementById('timer-bar');
+
+            if (adhdMode) {
+                wrapper.classList.add('hidden');
+            } else {
+                wrapper.classList.remove('hidden');
+                bar.style.transition = 'none';
+                bar.style.width = '100%';
+                bar.className = 'h-2 bg-sky-400';
+                // Paksa browser menerapkan width 100% sebelum transisi diaktifkan kembali
+                requestAnimationFrame(() => {
+                    bar.style.transition = `width ${limit}s linear`;
+                    bar.style.width = '0%';
+                });
+            }
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function handleTimeout() {
+            // Mode ABK/ADHD: waktu habis tidak dianggap kesalahan, hanya soal baru
+            // ditampilkan dengan pesan yang menenangkan, tanpa memutus streak.
+            const feedback = document.getElementById('feedback-box');
+            feedback.classList.remove('hidden');
+            const langData = dictionary[currentLang];
+            if (adhdMode) {
+                feedback.innerHTML = `<span class="text-teal-500">${langData.calmTimeoutFeedback}</span>`;
+            } else {
+                streak = 0;
+                document.getElementById('current-streak').innerText = streak;
+                feedback.innerHTML = `<span class="text-rose-500">${langData.wrongFeedback(correctAnswer)}</span>`;
+            }
+            trackLocalDataPoint();
+            setTimeout(generateQuestion, 1800);
+        }
+
+        function checkAnswer() {
+            stopTimer();
+            const userAns = parseInt(document.getElementById('user-answer').value);
+            const feedback = document.getElementById('feedback-box');
+            feedback.classList.remove('hidden');
+            const langData = dictionary[currentLang];
+
+            if(userAns === correctAnswer) {
+                score++;
+                streak++;
+                document.getElementById('current-streak').innerText = streak;
+                feedback.innerHTML = adhdMode
+                    ? `<span class="text-teal-500">${langData.calmCorrectFeedback}</span>`
+                    : `<span class="text-emerald-500">${langData.correctFeedback}</span>`;
+                trackLocalDataPoint();
+
+                if (streak > 0 && streak % 10 === 0) {
+                    setTimeout(showTrophyOverlay, 1000);
+                    return;
+                }
+            } else {
+                streak = 0;
+                document.getElementById('current-streak').innerText = streak;
+                feedback.innerHTML = adhdMode
+                    ? `<span class="text-teal-500">${langData.calmWrongFeedback(correctAnswer)}</span>`
+                    : `<span class="text-rose-500">${langData.wrongFeedback(correctAnswer)}</span>`;
+                trackLocalDataPoint();
+            }
+
+            setTimeout(generateQuestion, 1800);
+        }
+
+        function toggleAbkMode() {
+            adhdMode = document.getElementById('abk-toggle').checked;
+            // Jika sedang di tengah sesi game, segera terapkan durasi timer baru
+            if (!document.getElementById('game-screen').classList.contains('hidden')) {
+                startTimer();
+            }
+        }
+
+        // ===== TROPHY TIER (FOMO SYSTEM) & DECOY PRICING GATING =====
+        // Setiap kelipatan 10 jawaban benar beruntun = 1 piala. Warna piala
+        // berevolusi berdasarkan TOTAL piala yang sudah didapat (akumulasi lokal,
+        // bukan hanya sesi ini): 1-5 Bronze, 6-10 Silver, 11-15 Gold, 16-20 Platinum, >20 Diamond.
+        let lastTrophyGateTriggered = false;
+
+        function trophyTier(count) {
+            if (count <= 5) return { emoji: '🥉', label: 'Bronze', color: 'text-amber-700' };
+            if (count <= 10) return { emoji: '🥈', label: 'Silver', color: 'text-slate-400' };
+            if (count <= 15) return { emoji: '🥇', label: 'Gold', color: 'text-amber-500' };
+            if (count <= 20) return { emoji: '💎', label: 'Platinum', color: 'text-sky-400' };
+            return { emoji: '👑', label: 'Diamond', color: 'text-violet-500' };
+        }
+
+        function showTrophyOverlay() {
+            const data = loadLocalData();
+            data.trophyCount = (data.trophyCount || 0) + 1;
+            saveLocalData(data);
+
+            const tier = trophyTier(data.trophyCount);
+            const langData = dictionary[currentLang];
+            document.getElementById('overlay-emoji').innerText = tier.emoji;
+            document.getElementById('overlay-title').innerText = `${langData.overlayTitle} (${tier.label} ${tier.emoji})`;
+            document.getElementById('overlay-desc').innerText = langData.overlayDesc;
+            document.getElementById('trophy-overlay').classList.remove('hidden');
+
+            // Gating: hanya untuk user non-premium yang mencapai Tier Diamond
+            // ATAU sudah mengumpulkan 100 data poin lokal.
+            lastTrophyGateTriggered = !isUnlocked('alphabetStudy') && (tier.label === 'Diamond' || data.totalDataPoints >= 100);
+        }
+
+        function closeTrophyOverlay() {
+            document.getElementById('trophy-overlay').classList.add('hidden');
+            if (lastTrophyGateTriggered) {
+                lastTrophyGateTriggered = false;
+                stopTimer();
+                persistSessionEnd();
+                showUpsellOverlay();
+                return;
+            }
+            generateQuestion();
+        }
+
+        // Optimasi data: simpan ringkasan sesi ke localStorage dulu (gratis & instan).
+        // saveScoreToSheet HANYA dipanggil di akhir sesi (lewat fungsi ini), bukan per
+        // jawaban, supaya tidak membebani kuota Google Sheet/email harian. Dipakai baik
+        // saat sesi diakhiri normal (quitGame) maupun saat sesi dihentikan oleh paywall.
+        function persistSessionEnd() {
+            const data = loadLocalData();
+            data.sessions = data.sessions || [];
+            data.sessions.push({ tanggal: new Date().toISOString(), ageGroup: ageGroup, skor: score, streak: streak });
+            saveLocalData(data);
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.saveScoreToSheet("Etsy Infinite Play Group: " + ageGroup, score);
+            }
+        }
+
+        function quitGame() {
+            stopTimer();
+            const langData = dictionary[currentLang];
+            document.getElementById('final-score').innerText = score;
+
+            const trophyBox = document.getElementById('final-trophy-display');
+            if (score >= 10) {
+                trophyBox.innerHTML = `<div class="text-6xl my-3 animate-bounce">🏆⭐👑</div>
+                                       <p class="text-emerald-600 font-bold text-sm mb-2">Great Job! You unlocked the Master Trophy!</p>`;
+            } else {
+                trophyBox.innerHTML = '';
+            }
+
+            document.getElementById('result-score-desc').innerHTML = `${langData.resultScoreDesc} <span class="text-4xl font-bold text-amber-500">${score}</span>`;
+            showScreen('result-screen');
+            persistSessionEnd();
+        }
+
+        function sendParentReport() {
+            const statusEl = document.getElementById('report-status-msg');
+            const langData = dictionary[currentLang];
+            const email = document.getElementById('parent-email-input').value.trim();
+            if (!email) {
+                statusEl.innerText = langData.reportFailNoEmail;
+                return;
+            }
+            if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                statusEl.innerText = 'Hanya berfungsi saat berjalan sebagai Web App Apps Script.';
+                return;
+            }
+            statusEl.innerText = langData.reportSending;
+            const data = loadLocalData();
+            const body = `<h2>Laporan Belajar Anak</h2>
+                <p>Kategori: ${ageGroup}</p>
+                <p>Skor sesi terakhir: ${score}</p>
+                <p>Total piala terkumpul: ${data.trophyCount || 0}</p>
+                <p>Total sesi tercatat (lokal): ${(data.sessions || []).length}</p>`;
+            google.script.run
+                .withSuccessHandler(function (ok) {
+                    statusEl.innerText = ok ? langData.reportSuccess : langData.reportFailLocked;
+                })
+                .withFailureHandler(function () {
+                    statusEl.innerText = langData.reportFailLocked;
+                })
+                .sendReportEmail(email, body);
+        }
+
+        // Laporan via WhatsApp - sepenuhnya di sisi klien (wa.me), tidak menyentuh
+        // kuota Google Sheet/email harian sama sekali. Tanpa nomor tujuan supaya
+        // orang tua bebas memilih kontak/grup keluarga tujuan saat WhatsApp terbuka.
+        function sendWhatsAppReport() {
+            const langData = dictionary[currentLang];
+            const data = loadLocalData();
+            const tier = trophyTier(data.trophyCount || 0);
+            const levelLabel = (ageGroup === '3-4') ? 'Easy' : (ageGroup === '5-6') ? 'Medium' : 'Hard';
+
+            const text = `${langData.waReportIntro}\n\n` +
+                `${langData.waLevelLabel}: ${levelLabel}\n` +
+                `${langData.waScoreLabel}: ${score}\n` +
+                `${langData.waStreakLabel}: ${streak}\n` +
+                `${tier.emoji} ${langData.waTierLabel}: ${tier.label}\n\n` +
+                `${langData.waOutro}`;
+
+            const url = 'https://wa.me/?text=' + encodeURIComponent(text);
+            window.open(url, '_blank');
+        }
+
+        // ===== DATA LOKAL (localStorage-first) =====
+        // Skor, streak, dan piala harian disimpan di localStorage browser, BUKAN
+        // ditulis ke Google Sheet/email setiap jawaban. Sheet & email hanya dipanggil
+        // di akhir sesi (quitGame) atau saat orang tua menekan tombol kirim laporan.
+        const LOCAL_DATA_KEY = 'jagoMath_localData';
+
+        function loadLocalData() {
+            try {
+                const raw = localStorage.getItem(LOCAL_DATA_KEY);
+                return raw ? JSON.parse(raw) : { totalDataPoints: 0, trophyCount: 0, sessions: [] };
+            } catch (e) {
+                return { totalDataPoints: 0, trophyCount: 0, sessions: [] };
+            }
+        }
+
+        function saveLocalData(data) {
+            try {
+                localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(data));
+            } catch (e) {
+                // localStorage penuh/diblokir browser - aman diabaikan, data sesi tetap jalan
+            }
+        }
+
+        function trackLocalDataPoint() {
+            const data = loadLocalData();
+            data.totalDataPoints = (data.totalDataPoints || 0) + 1;
+            saveLocalData(data);
+        }
+
+        // ===== KONFIGURASI PAKET (server-side source of truth) & ADMIN BYPASS =====
+        // appConfig diisi dari getClientConfig() di Code.gs. window.IS_ADMIN (diset oleh
+        // doGet() setelah validasi token di server) selalu membuka semua fitur premium
+        // untuk keperluan testing, tidak peduli appConfig.plan saat ini.
+        let appConfig = { plan: 'free', limits: { alphabetStudy: false, nameTracing: false, bilingualModule: false, emailReport: false } };
+
+        function isUnlocked(feature) {
+            if (window.IS_ADMIN === true) return true;
+            return !!(appConfig && appConfig.limits && appConfig.limits[feature]);
+        }
+
+        function loadAppConfig() {
+            if (typeof google === 'undefined' || !google.script || !google.script.run) return;
+            google.script.run
+                .withSuccessHandler(function (config) {
+                    appConfig = config;
+                    refreshLockBadges();
+                })
+                .withFailureHandler(function () {})
+                .getClientConfig();
+        }
+
+        function refreshLockBadges() {
+            const badge = document.getElementById('alphabet-lock-badge');
+            badge.classList.toggle('hidden', isUnlocked('alphabetStudy'));
+        }
+
+        // ===== MODUL TUTORIAL ABJAD (A-Z) =====
+        function openAlphabetModule() {
+            if (!isUnlocked('alphabetStudy')) {
+                showUpsellOverlay();
+                return;
+            }
+            renderAlphabetGrid();
+            showScreen('alphabet-screen');
+        }
+
+        function renderAlphabetGrid() {
+            const grid = document.getElementById('alphabet-grid');
+            const colors = ['bg-sky-100 text-sky-700 border-sky-300', 'bg-rose-100 text-rose-700 border-rose-300', 'bg-amber-100 text-amber-700 border-amber-300', 'bg-emerald-100 text-emerald-700 border-emerald-300', 'bg-violet-100 text-violet-700 border-violet-300'];
+            grid.innerHTML = '';
+            for (let i = 0; i < 26; i++) {
+                const letter = String.fromCharCode(65 + i);
+                const colorClass = colors[i % colors.length];
+                // onclick eksplisit per kartu, langsung memicu speakLetter() saat diklik anak.
+                grid.innerHTML += `<button type="button" onclick="speakLetter('${letter}')" class="aspect-square flex items-center justify-center rounded-2xl border-2 font-bold text-3xl ${colorClass} active:scale-90 transition cursor-pointer">${letter}</button>`;
+            }
+        }
+
+        // ===== TEXT-TO-SPEECH (Web Speech API) untuk Modul Abjad =====
+        // Kosakata contoh per huruf, mengikuti bahasa aktif (id-ID / en-US).
+        const ALPHABET_WORDS = {
+            id: { A: 'Apel', B: 'Bola', C: 'Cacing', D: 'Dadu', E: 'Ekor', F: 'Foto', G: 'Gajah', H: 'Hujan', I: 'Ikan', J: 'Jam', K: 'Kuda', L: 'Laut', M: 'Meja', N: 'Naga', O: 'Obat', P: 'Pisang', Q: 'Quran', R: 'Rumah', S: 'Susu', T: 'Telur', U: 'Ular', V: 'Vas', W: 'Wortel', X: 'Xilofon', Y: 'Yoyo', Z: 'Zebra' },
+            en: { A: 'Apple', B: 'Ball', C: 'Cat', D: 'Dog', E: 'Egg', F: 'Fish', G: 'Grape', H: 'Hat', I: 'Ice Cream', J: 'Juice', K: 'Kite', L: 'Lion', M: 'Moon', N: 'Nest', O: 'Orange', P: 'Pig', Q: 'Queen', R: 'Rabbit', S: 'Sun', T: 'Tiger', U: 'Umbrella', V: 'Van', W: 'Watermelon', X: 'Xylophone', Y: 'Yarn', Z: 'Zebra' }
+        };
+
+        function speakLetter(letter) {
+            console.log('[TTS] Kartu diklik:', letter, '| Bahasa aktif:', currentLang);
+
+            if (!('speechSynthesis' in window)) {
+                console.log('[TTS] Browser ini tidak mendukung Web Speech API.');
+                return;
+            }
+
+            const word = (ALPHABET_WORDS[currentLang] && ALPHABET_WORDS[currentLang][letter]) || letter;
+            const phrase = `${letter}... ${word}`;
+
+            const utterance = new SpeechSynthesisUtterance(phrase);
+            utterance.lang = (currentLang === 'id') ? 'id-ID' : 'en-US';
+            utterance.rate = 0.85; // sedikit lebih pelan & jelas untuk anak-anak
+            utterance.pitch = 1.05;
+            utterance.onstart = () => console.log('[TTS] Mulai mengucapkan:', phrase, '(' + utterance.lang + ')');
+            utterance.onerror = (event) => console.log('[TTS] Gagal/diblokir oleh browser:', event.error);
+
+            // Batalkan ucapan sebelumnya dulu agar tidak menumpuk saat anak klik cepat-cepat.
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // ===== UPSELL OVERLAY (Decoy Pricing) =====
+        function showUpsellOverlay() {
+            document.getElementById('upsell-overlay').classList.remove('hidden');
+        }
+
+        function closeUpsellOverlay() {
+            document.getElementById('upsell-overlay').classList.add('hidden');
+            showScreen('welcome-screen');
+        }
+
+        // ===== ADMIN PANEL (tidak berhubungan dengan UI/permainan anak) =====
+        // Panel hanya ditampilkan jika window.IS_ADMIN === true, yang diset oleh
+        // doGet() di Code.gs setelah memvalidasi ?role=... di server. Setiap aksi
+        // di sini (changePlan, loadScoreHistory) tetap mengirim window.ADMIN_TOKEN
+        // dan divalidasi ULANG di server, karena window.IS_ADMIN sendiri hanyalah
+        // flag UI yang bisa dipalsukan lewat DevTools.
+
+        function toggleAdminPanel() {
+            document.getElementById('admin-panel-box').classList.toggle('hidden');
+        }
+
+        function setAdminStatus(msg) {
+            document.getElementById('admin-status-msg').innerText = msg || '';
+        }
+
+        function changePlan(plan) {
+            if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                setAdminStatus('Hanya berfungsi saat berjalan sebagai Web App Apps Script.');
+                return;
+            }
+            setAdminStatus('Menyimpan...');
+            google.script.run
+                .withSuccessHandler(function (newPlan) {
+                    document.getElementById('admin-current-plan').innerText = newPlan;
+                    setAdminStatus('✅ Plan diubah menjadi: ' + newPlan);
+                })
+                .withFailureHandler(function (err) {
+                    setAdminStatus('❌ ' + (err && err.message ? err.message : 'Gagal mengubah plan.'));
+                })
+                .setAppPlan(plan, window.ADMIN_TOKEN);
+        }
+
+        function loadScoreHistory() {
+            if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                setAdminStatus('Hanya berfungsi saat berjalan sebagai Web App Apps Script.');
+                return;
+            }
+            setAdminStatus('Memuat riwayat...');
+            google.script.run
+                .withSuccessHandler(renderScoreHistory)
+                .withFailureHandler(function (err) {
+                    setAdminStatus('❌ ' + (err && err.message ? err.message : 'Gagal memuat riwayat.'));
+                })
+                .getScoreHistory(window.ADMIN_TOKEN);
+        }
+
+        function renderScoreHistory(rows) {
+            setAdminStatus('');
+            const list = document.getElementById('admin-history-list');
+            if (!rows || rows.length === 0) {
+                list.innerHTML = '<p class="text-slate-400">Belum ada data sesi.</p>';
+                return;
+            }
+            list.innerHTML = rows.slice().reverse().map(function (row) {
+                return `<div class="border-b border-slate-100 py-1">
+                    <span class="font-bold">${row.nama || '-'}</span> (${row.kategori || '-'}) —
+                    ${row.skor}/${row.total} benar, streak ${row.streak}
+                    <span class="text-slate-400 block">${row.tanggal}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function initAdminPanel() {
+            if (!window.IS_ADMIN) return;
+            document.getElementById('admin-panel').classList.remove('hidden');
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function (config) {
+                        document.getElementById('admin-current-plan').innerText = config.plan;
+                    })
+                    .withFailureHandler(function () {})
+                    .getClientConfig();
+            }
+        }
+
+        initAdminPanel();
+        loadAppConfig();
+        refreshLockBadges();
+    </script>
+</body>
+</html>
